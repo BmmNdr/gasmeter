@@ -1,0 +1,4 @@
+<resources>
+    <!-- Window theme only; the app's look comes from the Compose theme. -->
+    <style name="Theme.GasMeter" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -30,8 +30,9 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 ### 2. Result card for each trip
 - Shows the distance, range used, excess km, ratio, fuel (L) and cost (€).
 - **Verdict:**
-  - **Efficient / Normal / Expensive:** given once the route has at least 3 trips. Normal means within ±15% of the route's median ratio; Efficient is below that band and Expensive is above it.
-  - **"Not enough history yet":** shown before the route has 3 trips, together with the plain ratio.
+  - **Efficient / Normal / Expensive:** given once the route has at least 3 *earlier* counted trips, so the first verdict appears on the route's 4th trip. Normal means within ±15% of the route's median ratio (bounds inclusive); Efficient is below that band and Expensive is above it.
+  - **"Not enough history yet":** shown before then, together with the plain ratio.
+  - **No verdict at all:** for idle trips (distance 0), trips where the range went up, refuelled or excluded trips, and routes whose median ratio is zero or negative.
 - **Rounding hint:** "±X km" based on your display step setting. On very short trips it adds the note "too short to judge alone".
 
 ### 3. Saved routes and comparison (the core screen)
@@ -113,4 +114,4 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 - **What this environment has:** Java 21 and Gradle, but **no Android SDK**.
 - **`core` unit tests:** they run here with `./gradlew :core:test`. They cover your 300→295 / 2 km example (excess 3, ratio 2.5), the verdict thresholds, negative deltas, refuel exclusion and median stats.
 - **APK build:** needs the Android SDK command-line tools downloaded here (if the network allows it) or Android Studio on your machine. Then run `./gradlew assembleDebug`.
-- **Real UI test:** install the debug APK on your phone and log a few real trips on one route. Check that the verdict appears after the third trip and that the stats and costs match a hand calculation.
+- **Real UI test:** install the debug APK on your phone and log a few real trips on one route. Check that the verdict first appears on the fourth trip and that the stats and costs match a hand calculation.
