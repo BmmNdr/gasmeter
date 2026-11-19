@@ -11,15 +11,18 @@ data class TripReadings(
 /**
  * The car settings needed to turn range-km into fuel and money.
  *
- * @param consumptionLitresPer100Km the car's average consumption.
+ * @param consumptionLitresPer100Km the car's average consumption, or null when the
+ *   user hasn't entered it yet; litres and costs are then left out.
  * @param rangeDisplayStepKm how coarsely the dashboard rounds the range (1, 5, 10 km...).
  */
 data class CarProfile(
-    val consumptionLitresPer100Km: Double,
+    val consumptionLitresPer100Km: Double?,
     val rangeDisplayStepKm: Double = 1.0,
 ) {
     init {
-        require(consumptionLitresPer100Km > 0) { "Consumption must be positive" }
+        require(consumptionLitresPer100Km == null || consumptionLitresPer100Km > 0) {
+            "Consumption must be positive"
+        }
         require(rangeDisplayStepKm > 0) { "Range display step must be positive" }
     }
 }
@@ -31,7 +34,8 @@ data class CarProfile(
  *   used less than the car's own estimate.
  * @property ratio range used per km driven. 1.0 means the trip matched the car's
  *   estimate. Null for an idle trip (distance 0), where a ratio is meaningless.
- * @property cost null when no fuel price is known.
+ * @property litres null when the car's consumption is unknown.
+ * @property cost null when the consumption or the fuel price is unknown.
  * @property rangeUncertaintyKm how far off [rangeUsedKm] can be because of the
  *   dashboard rounding (both readings are rounded, so up to one display step).
  * @property tooShortToJudge true when the rounding error is large compared to the
@@ -42,7 +46,7 @@ data class TripMetrics(
     val rangeUsedKm: Double,
     val excessKm: Double,
     val ratio: Double?,
-    val litres: Double,
+    val litres: Double?,
     val cost: Double?,
     val excessCost: Double?,
     val rangeUncertaintyKm: Double,
@@ -68,16 +72,21 @@ object TripCalculator {
         val distance = readings.odometerEndKm - readings.odometerStartKm
         val rangeUsed = readings.rangeStartKm - readings.rangeEndKm
         val excess = rangeUsed - distance
-        val litresPerRangeKm = car.consumptionLitresPer100Km / 100.0
+        val litresPerRangeKm = car.consumptionLitresPer100Km?.let { it / 100.0 }
+        val pricePerRangeKm = if (litresPerRangeKm != null && fuelPricePerLitre != null) {
+            litresPerRangeKm * fuelPricePerLitre
+        } else {
+            null
+        }
 
         return TripMetrics(
             distanceKm = distance,
             rangeUsedKm = rangeUsed,
             excessKm = excess,
             ratio = if (distance > 0) rangeUsed / distance else null,
-            litres = rangeUsed * litresPerRangeKm,
-            cost = fuelPricePerLitre?.let { rangeUsed * litresPerRangeKm * it },
-            excessCost = fuelPricePerLitre?.let { excess * litresPerRangeKm * it },
+            litres = litresPerRangeKm?.let { rangeUsed * it },
+            cost = pricePerRangeKm?.let { rangeUsed * it },
+            excessCost = pricePerRangeKm?.let { excess * it },
             rangeUncertaintyKm = car.rangeDisplayStepKm,
             tooShortToJudge = distance < 2 * car.rangeDisplayStepKm,
         )

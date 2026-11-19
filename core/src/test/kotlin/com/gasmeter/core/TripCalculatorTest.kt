@@ -25,7 +25,7 @@ class TripCalculatorTest {
         assertEquals(3.0, m.excessKm, tolerance)
         assertEquals(2.5, m.ratio!!, tolerance)
         // 5 range-km at 6 L/100 km = 0.3 L; at 1.80/L = 0.54
-        assertEquals(0.3, m.litres, tolerance)
+        assertEquals(0.3, m.litres!!, tolerance)
         assertEquals(0.54, m.cost!!, tolerance)
         // 3 excess km = 0.18 L = 0.324
         assertEquals(0.324, m.excessCost!!, tolerance)
@@ -38,7 +38,17 @@ class TripCalculatorTest {
         assertNull(m.cost)
         assertNull(m.excessCost)
         assertEquals(1.2, m.ratio!!, tolerance)
-        assertEquals(0.72, m.litres, tolerance)
+        assertEquals(0.72, m.litres!!, tolerance)
+    }
+
+    @Test
+    fun `unknown consumption means no litres or money values`() {
+        val car = CarProfile(consumptionLitresPer100Km = null)
+        val m = TripCalculator.calculate(TripReadings(300.0, 295.0, 0.0, 2.0), car, fuelPricePerLitre = 1.80)
+        assertNull(m.litres)
+        assertNull(m.cost)
+        assertNull(m.excessCost)
+        assertEquals(2.5, m.ratio!!, tolerance)
     }
 
     @Test
