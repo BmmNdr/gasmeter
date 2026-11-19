@@ -76,6 +76,15 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 - **Trend:** median of the last 5 trips vs. all trips; within ±5% counts as stable. Needs more than 5 trips.
 - **Range went up (negative ratio):** kept in medians, where rounding errors cancel out, but never shown as best/worst trip and never given a verdict.
 
+## Decisions made while building step 2 (trip logging)
+- **Number input:** both `12.5` and `12,5` work. With both `.` and `,` present, the last one is the decimal separator. A separator that appears more than once is a thousands separator (`1.234.567`). A single separator is always a decimal, so `12.345` means 12.345 km, not 12345.
+- **Range display step:** asked once, on the first Start trip. It can't be changed until the settings screen exists (step 4).
+- **Litres and cost:** hidden until the car's consumption is set (step 4). The result card says so instead of using a guessed default.
+- **New route:** added inline on the Start trip screen (name field + Add), not in a dialog. Route management (rename, delete, assign a route to an old trip) comes with step 3.
+- **Open trip:** stored in the database, so it survives the app being closed. Only one trip can be open; it can be ended or discarded from the home screen.
+- **Database:** schema v1 is exported to `app/schemas/`. From now on, schema changes need real Room migrations so installed data is kept.
+- **Signing:** debug builds use the committed `app/debug.keystore` (the standard Android debug key), so new builds install over old ones without losing data.
+
 ## Edge cases
 | Case | Handling |
 |---|---|
@@ -97,7 +106,7 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 - `app/`: Android UI, ViewModels, Room.
 - `core/`: pure-Kotlin JVM module with the calculations, verdict logic and stats. It is unit-testable without Android.
 - **Main entities:**
-  - `Route(id, name, typicalDistance?)`
+  - `Route(id, name)` (unique name, ignoring case)
   - `Trip(id, routeId?, startTime, endTime, rangeStart, rangeEnd, odoStart, odoEnd, tags, refuelled, excluded, note)`
   - `FuelPrice(date, pricePerLitre)`
   - `CarSettings(consumption, rangeStep, currency)`
