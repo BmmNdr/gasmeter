@@ -51,6 +51,13 @@ kotlin {
     }
 }
 
+// `./gradlew :app:testDebugUnitTest -PscreenshotDir=/some/dir` also renders
+// screenshots of the main screens (see ScreenshotTest); skipped otherwise.
+val screenshotDir = providers.gradleProperty("screenshotDir")
+tasks.withType<Test>().configureEach {
+    screenshotDir.orNull?.let { systemProperty("gasmeter.screenshotDir", it) }
+}
+
 dependencies {
     implementation(project(":core"))
 
@@ -59,6 +66,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.navigation.compose)
     implementation(libs.lifecycle.viewmodel.compose)
