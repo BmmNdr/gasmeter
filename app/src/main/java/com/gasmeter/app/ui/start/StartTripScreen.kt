@@ -7,16 +7,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,7 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gasmeter.app.ui.ChoiceChip
 import com.gasmeter.app.ui.GasMeterScaffold
+import com.gasmeter.app.ui.LocalGasMeterColors
+import com.gasmeter.app.ui.PrimaryButton
+import com.gasmeter.app.ui.SectionLabel
 import com.gasmeter.app.ui.KmField
 
 private val STEP_OPTIONS = listOf(1.0, 5.0, 10.0)
@@ -52,24 +53,24 @@ fun StartTripScreen(viewModel: StartTripViewModel, onBack: () -> Unit, onStarted
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Route", style = MaterialTheme.typography.titleMedium)
+            SectionLabel("Route")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                ChoiceChip(
                     selected = viewModel.selectedRouteId == null,
                     onClick = { viewModel.selectedRouteId = null },
-                    label = { Text("No route") },
+                    text = "No route",
                 )
                 routes.forEach { route ->
-                    FilterChip(
+                    ChoiceChip(
                         selected = viewModel.selectedRouteId == route.id,
                         onClick = { viewModel.selectedRouteId = route.id },
-                        label = { Text(route.name) },
+                        text = route.name,
                     )
                 }
-                FilterChip(
+                ChoiceChip(
                     selected = showNewRoute,
                     onClick = { showNewRoute = !showNewRoute },
-                    label = { Text("+ New route") },
+                    text = "+ New route",
                 )
             }
             if (showNewRoute) {
@@ -79,7 +80,7 @@ fun StartTripScreen(viewModel: StartTripViewModel, onBack: () -> Unit, onStarted
                 })
             }
 
-            Text("Dashboard readings now", style = MaterialTheme.typography.titleMedium)
+            SectionLabel("Dashboard readings now")
             KmField(
                 value = viewModel.rangeText,
                 onValueChange = { viewModel.rangeText = it },
@@ -102,13 +103,14 @@ fun StartTripScreen(viewModel: StartTripViewModel, onBack: () -> Unit, onStarted
                     "If it only shows 300, 295, 290… pick 5 km. This tells the app how much of a short " +
                         "trip's result is just rounding.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = LocalGasMeterColors.current.muted,
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     STEP_OPTIONS.forEach { step ->
-                        FilterChip(
+                        ChoiceChip(
                             selected = viewModel.chosenStepKm == step,
                             onClick = { viewModel.chosenStepKm = step },
-                            label = { Text("${step.toInt()} km steps") },
+                            text = "${step.toInt()} km steps",
                         )
                     }
                 }
@@ -119,11 +121,12 @@ fun StartTripScreen(viewModel: StartTripViewModel, onBack: () -> Unit, onStarted
 
             viewModel.generalError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-            Button(
+            PrimaryButton(
+                text = "Start",
                 onClick = { viewModel.start(onStarted) },
                 enabled = !viewModel.saving,
-                modifier = Modifier.fillMaxWidth().height(56.dp).testTag("startButton"),
-            ) { Text("Start") }
+                modifier = Modifier.testTag("startButton"),
+            )
         }
     }
 }
@@ -137,6 +140,10 @@ private fun NewRouteRow(onAdd: (String) -> Unit) {
             onValueChange = { name = it },
             label = { Text("Route name, e.g. Home → Work") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            ),
             modifier = Modifier.weight(1f).testTag("routeNameField"),
         )
         TextButton(onClick = { onAdd(name) }, enabled = name.isNotBlank()) { Text("Add") }

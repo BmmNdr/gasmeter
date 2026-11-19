@@ -23,7 +23,7 @@ class TripFlowTest {
 
     private fun waitForText(text: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText(text, substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

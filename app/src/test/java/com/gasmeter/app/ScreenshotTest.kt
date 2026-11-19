@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -33,11 +34,11 @@ class ScreenshotTest {
 
     private fun waitForText(text: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
-            compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText(text, substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
-    private fun shot(name: String) {
+    private fun shot(name: String, mode: String) {
         compose.waitForIdle()
         var bitmap: Bitmap? = null
         compose.activityRule.scenario.onActivity { activity ->
@@ -47,11 +48,17 @@ class ScreenshotTest {
             }
         }
         outDir!!.mkdirs()
-        File(outDir, "$name.png").outputStream().use { bitmap!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(outDir, "$mode-$name.png").outputStream().use { bitmap!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test
-    fun mainScreens() {
+    fun lightMode() = mainScreens("light")
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun darkMode() = mainScreens("dark")
+
+    private fun mainScreens(mode: String) {
         assumeTrue("screenshot dir not set", outDir != null)
 
         // Seed: three normal runs of a route, then the flow below adds an expensive one.
@@ -72,26 +79,26 @@ class ScreenshotTest {
 
         waitForText("Recent trips")
         waitForText("Home → Work")
-        shot("1-home")
+        shot("1-home", mode)
 
         compose.onNodeWithText("Start trip").performClick()
         waitForText("Dashboard readings now")
         compose.onNodeWithText("Home → Work").performClick()
-        shot("2-start-trip")
-        compose.onNodeWithTag("startButton").performClick()
+        shot("2-start-trip", mode)
+        compose.onNodeWithTag("startButton").performScrollTo().performClick()
 
         waitForText("Trip in progress")
-        shot("3-trip-in-progress")
+        shot("3-trip-in-progress", mode)
         compose.onNodeWithText("End trip").performClick()
         waitForText("Dashboard readings now")
         compose.onNodeWithTag("endRangeField").performTextInput("265")
         compose.onNodeWithTag("endOdometerField").performTextInput("41244")
         compose.onNodeWithText("Heavy traffic").performClick()
-        shot("4-end-trip")
+        shot("4-end-trip", mode)
 
-        compose.onNodeWithTag("saveTripButton").performClick()
+        compose.onNodeWithTag("saveTripButton").performScrollTo().performClick()
         waitForText("Trip result")
         waitForText("Expensive")
-        shot("5-result")
+        shot("5-result", mode)
     }
 }

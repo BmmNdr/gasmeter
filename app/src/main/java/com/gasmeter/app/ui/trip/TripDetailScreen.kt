@@ -2,6 +2,8 @@ package com.gasmeter.app.ui.trip
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,11 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,13 +24,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gasmeter.app.data.CarSettings
+import com.gasmeter.app.ui.BigStat
 import com.gasmeter.app.ui.GasMeterScaffold
+import com.gasmeter.app.ui.LocalGasMeterColors
 import com.gasmeter.app.ui.MetricRow
+import com.gasmeter.app.ui.MonoBody
+import com.gasmeter.app.ui.PanelCard
+import com.gasmeter.app.ui.SectionLabel
+import com.gasmeter.app.ui.TagPill
+import com.gasmeter.app.ui.VerdictBanner
 import com.gasmeter.app.ui.describe
 import com.gasmeter.app.ui.formatDateTime
 import com.gasmeter.app.ui.formatKm
@@ -38,9 +44,8 @@ import com.gasmeter.app.ui.formatMoney
 import com.gasmeter.app.ui.formatRatio
 import com.gasmeter.app.ui.formatSignedKm
 import com.gasmeter.app.ui.label
+import com.gasmeter.app.ui.verdictColor
 import com.gasmeter.core.AnalyzedTrip
-import com.gasmeter.core.Rating
-import com.gasmeter.core.Verdict
 
 @Composable
 fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
@@ -63,7 +68,10 @@ fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
                 else -> {
                     TripResult(trip, state.routeName, state.settings)
                     FlagsCard(trip, viewModel)
-                    OutlinedButton(onClick = { confirmDelete = true }) { Text("Delete trip") }
+                    OutlinedButton(
+                        onClick = { confirmDelete = true },
+                        shape = MaterialTheme.shapes.medium,
+                    ) { Text("Delete trip", color = MaterialTheme.colorScheme.error) }
                 }
             }
         }
@@ -85,40 +93,38 @@ fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: CarSettings) {
     val m = analyzed.trip.metrics
     val (headline, explanation) = analyzed.verdict.describe()
+    val muted = LocalGasMeterColors.current.muted
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(routeName ?: "No route", style = MaterialTheme.typography.titleLarge)
-        Text(formatDateTime(analyzed.log.endedAt), style = MaterialTheme.typography.bodyMedium)
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(routeName ?: "No route", style = MaterialTheme.typography.headlineSmall)
+        Text(formatDateTime(analyzed.log.endedAt), style = MonoBody, color = muted)
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = verdictColor(analyzed.verdict)),
-    ) {
-        Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(headline, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("verdictHeadline"))
-            Text(explanation, style = MaterialTheme.typography.bodyMedium)
+    VerdictBanner(headline, explanation, verdictColor(analyzed.verdict), headlineTag = "verdictHeadline")
+
+    // The two numbers that matter, instrument-style.
+    if (!m.isIdle) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            m.ratio?.let { BigStat(formatRatio(it), "Range per km", Modifier.weight(1f)) }
+            BigStat(formatSignedKm(m.excessKm), "Extra range", Modifier.weight(1f))
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (m.isIdle) {
-                Text("${formatKm(m.rangeUsedKm)} of range used while the car didn't move.")
-            } else {
-                MetricRow("Distance driven", formatKm(m.distanceKm))
-                MetricRow("Range used", "${formatKm(m.rangeUsedKm)} (±${formatKm(m.rangeUncertaintyKm)})")
-                MetricRow("Extra range used", formatSignedKm(m.excessKm), emphasize = true)
-                m.ratio?.let { MetricRow("Range per km driven", formatRatio(it), emphasize = true) }
-            }
-            m.litres?.let { MetricRow("Fuel", formatLitres(it)) }
-            m.cost?.let { MetricRow("Cost", formatMoney(it, settings.currency)) }
-            m.excessCost?.let { MetricRow("Cost of extra range", formatMoney(it, settings.currency)) }
+    PanelCard {
+        if (m.isIdle) {
+            Text("${formatKm(m.rangeUsedKm)} of range used while the car didn't move.")
+        } else {
+            MetricRow("Distance driven", formatKm(m.distanceKm))
+            MetricRow("Range used", "${formatKm(m.rangeUsedKm)} (±${formatKm(m.rangeUncertaintyKm)})")
         }
+        m.litres?.let { MetricRow("Fuel", formatLitres(it)) }
+        m.cost?.let { MetricRow("Cost", formatMoney(it, settings.currency)) }
+        m.excessCost?.let { MetricRow("Cost of extra range", formatMoney(it, settings.currency), emphasize = true) }
     }
 
     if (m.tooShortToJudge && !m.isIdle) {
@@ -126,6 +132,7 @@ private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: Car
             "Short trip: your dashboard rounds the range to ${formatKm(m.rangeUncertaintyKm)}, so this trip " +
                 "alone says little. Comparing several runs of the same route evens this out.",
             style = MaterialTheme.typography.bodyMedium,
+            color = muted,
         )
     }
     if (m.litres == null) {
@@ -133,32 +140,41 @@ private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: Car
             "Litres and cost will appear once you set your car's average consumption and the fuel " +
                 "price (settings are coming in a later version).",
             style = MaterialTheme.typography.bodySmall,
+            color = muted,
         )
     } else if (m.cost == null) {
-        Text("Add a fuel price to see the cost.", style = MaterialTheme.typography.bodySmall)
+        Text("Add a fuel price to see the cost.", style = MaterialTheme.typography.bodySmall, color = muted)
     }
 
     if (analyzed.log.tags.isNotEmpty()) {
-        Text("Tags: " + analyzed.log.tags.sortedBy { it.ordinal }.joinToString { it.label() })
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionLabel("Tags")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                analyzed.log.tags.sortedBy { it.ordinal }.forEach { TagPill(it.label()) }
+            }
+        }
     }
-    analyzed.log.note?.let { Text("Note: $it") }
+    analyzed.log.note?.let { note ->
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SectionLabel("Note")
+            Text(note)
+        }
+    }
 }
 
 @Composable
 private fun FlagsCard(analyzed: AnalyzedTrip, viewModel: TripDetailViewModel) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            SwitchRow(
-                label = "Refuelled during this trip",
-                checked = analyzed.log.refuelledDuringTrip,
-                onCheckedChange = viewModel::setRefuelled,
-            )
-            SwitchRow(
-                label = "Exclude from comparisons",
-                checked = analyzed.log.excludedFromStats,
-                onCheckedChange = viewModel::setExcluded,
-            )
-        }
+    PanelCard {
+        SwitchRow(
+            label = "Refuelled during this trip",
+            checked = analyzed.log.refuelledDuringTrip,
+            onCheckedChange = viewModel::setRefuelled,
+        )
+        SwitchRow(
+            label = "Exclude from comparisons",
+            checked = analyzed.log.excludedFromStats,
+            onCheckedChange = viewModel::setExcluded,
+        )
     }
 }
 
@@ -166,17 +182,14 @@ private fun FlagsCard(analyzed: AnalyzedTrip, viewModel: TripDetailViewModel) {
 private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-private fun verdictColor(verdict: Verdict?): Color {
-    val scheme = MaterialTheme.colorScheme
-    return when ((verdict as? Verdict.Judged)?.rating) {
-        Rating.EXPENSIVE -> scheme.errorContainer
-        Rating.EFFICIENT -> scheme.primaryContainer
-        Rating.NORMAL -> scheme.secondaryContainer
-        null -> scheme.surfaceVariant
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                uncheckedThumbColor = LocalGasMeterColors.current.muted,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                uncheckedBorderColor = LocalGasMeterColors.current.muted,
+            ),
+        )
     }
 }

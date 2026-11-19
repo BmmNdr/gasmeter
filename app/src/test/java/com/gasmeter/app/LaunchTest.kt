@@ -14,6 +14,6 @@ class LaunchTest {
 
     @Test
     fun appLaunches() {
-        compose.onNodeWithText("GasMeter").assertExists()
+        compose.onNodeWithText("GasMeter", ignoreCase = true).assertExists()
     }
 }
