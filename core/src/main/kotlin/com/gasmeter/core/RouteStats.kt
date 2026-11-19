@@ -28,6 +28,10 @@ data class Trend(
  * Statistics for one route. Refuelled and excluded trips are left out of
  * everything except [ignoredTripCount]. Idle trips (distance 0) count towards
  * totals and costs but have no ratio.
+ *
+ * Trips where the range went up (negative ratio) are rounding noise: they stay
+ * in the median and mean, where rounding errors cancel out, but can never be
+ * [bestTrip] or [worstTrip].
  */
 data class RouteStats(
     val tripCount: Int,
@@ -52,6 +56,7 @@ data class RouteStats(
             val counted = trips.filter { it.countsForStats }.sortedBy { it.endedAt }
             val withRatio = counted.filter { it.metrics.ratio != null }
             val ratios = withRatio.map { it.metrics.ratio!! }
+            val rankable = withRatio.filter { it.metrics.ratio!! >= 0 }
             val costs = counted.mapNotNull { it.metrics.cost }
             val excessCosts = counted.mapNotNull { it.metrics.excessCost }
 
@@ -71,8 +76,8 @@ data class RouteStats(
                 ignoredTripCount = trips.size - counted.size,
                 medianRatio = overallMedian,
                 meanRatio = ratios.takeIf { it.isNotEmpty() }?.average(),
-                bestTrip = withRatio.minByOrNull { it.metrics.ratio!! },
-                worstTrip = withRatio.maxByOrNull { it.metrics.ratio!! },
+                bestTrip = rankable.minByOrNull { it.metrics.ratio!! },
+                worstTrip = rankable.maxByOrNull { it.metrics.ratio!! },
                 totalDistanceKm = counted.sumOf { it.metrics.distanceKm },
                 totalRangeUsedKm = counted.sumOf { it.metrics.rangeUsedKm },
                 totalExcessKm = counted.sumOf { it.metrics.excessKm },

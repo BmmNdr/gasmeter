@@ -69,6 +69,13 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
   - > 1.15 → Expensive
   - Requires at least 3 previous trips on the route.
 
+## Thresholds chosen in code (tune after real use)
+- **Too short to judge:** distance under 2 range display steps (under 10 km with a 5 km step).
+- **Refuel prompt:** range goes up by more than 30 km, or 3 display steps if that is larger.
+- **Implausible distance warning:** over 1500 km in one trip.
+- **Trend:** median of the last 5 trips vs. all trips; within ±5% counts as stable. Needs more than 5 trips.
+- **Range went up (negative ratio):** kept in medians, where rounding errors cancel out, but never shown as best/worst trip and never given a verdict.
+
 ## Edge cases
 | Case | Handling |
 |---|---|

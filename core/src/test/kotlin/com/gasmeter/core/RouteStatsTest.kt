@@ -65,6 +65,18 @@ class RouteStatsTest {
     }
 
     @Test
+    fun `trip where range went up is never the best trip but stays in the median`() {
+        val noise = tripWithRatio(-0.4, day = 0)
+        val good = tripWithRatio(1.1, day = 1)
+        val bad = tripWithRatio(1.5, day = 2)
+        val stats = RouteStats.from(listOf(noise, good, bad))
+
+        assertSame(good, stats.bestTrip)
+        assertSame(bad, stats.worstTrip)
+        assertEquals(1.1, stats.medianRatio!!, tolerance)
+    }
+
+    @Test
     fun `trend needs more trips than the window`() {
         val five = (0L until 5L).map { tripWithRatio(1.0, day = it) }
         assertNull(RouteStats.from(five).trend)
