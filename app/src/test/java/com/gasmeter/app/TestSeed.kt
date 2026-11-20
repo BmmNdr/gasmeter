@@ -40,6 +40,12 @@ class TestSeed {
 
     fun step(km: Double) = runBlocking { repository.setRangeDisplayStep(km) }
 
+    /** Consumption and a fuel price, so costs show. */
+    fun costs(litresPer100Km: Double = 6.5, pricePerLitre: Double = 1.789) = runBlocking {
+        repository.setConsumption(litresPer100Km)
+        repository.setFuelPrice(java.time.LocalDate.of(2026, 3, 1), pricePerLitre)
+    }
+
     /**
      * A commute with morning runs and two heavy-traffic evening runs, plus a
      * one-trip "Gym" route and a trip without route.

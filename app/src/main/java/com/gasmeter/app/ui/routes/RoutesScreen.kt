@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +28,7 @@ import com.gasmeter.app.ui.LocalGasMeterColors
 import com.gasmeter.app.ui.MonoBody
 import com.gasmeter.app.ui.SectionLabel
 import com.gasmeter.app.ui.TagPill
+import com.gasmeter.app.ui.formatMoney
 import com.gasmeter.app.ui.formatRatio
 import com.gasmeter.app.ui.shortLabel
 import com.gasmeter.app.ui.tripCount
@@ -34,11 +39,20 @@ fun RoutesScreen(
     viewModel: RoutesViewModel,
     onOpenRoute: (Long) -> Unit,
     bottomBar: @Composable () -> Unit,
+    onOpenSettings: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val muted = LocalGasMeterColors.current.muted
 
-    GasMeterScaffold(title = "Routes", bottomBar = bottomBar) { padding ->
+    GasMeterScaffold(
+        title = "Routes",
+        bottomBar = bottomBar,
+        actions = {
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+            }
+        },
+    ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -75,7 +89,9 @@ private fun RouteRow(route: RouteListItem, onClick: () -> Unit) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(route.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                tripCount(route.tripCount) + (route.medianRatio?.let { " · usual ${formatRatio(it)}" } ?: ""),
+                tripCount(route.tripCount) +
+                    (route.medianRatio?.let { " · usual ${formatRatio(it)}" } ?: "") +
+                    (route.averageCost?.let { " · avg ${formatMoney(it, route.currency)}" } ?: ""),
                 style = MonoBody,
                 color = LocalGasMeterColors.current.muted,
             )

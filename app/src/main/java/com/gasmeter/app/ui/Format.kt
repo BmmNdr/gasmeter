@@ -6,6 +6,7 @@ import com.gasmeter.core.Trend
 import com.gasmeter.core.TripTag
 import com.gasmeter.core.Verdict
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -49,6 +50,13 @@ fun formatDate(instant: Instant): String =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         .withLocale(locale())
         .format(instant.atZone(ZoneId.systemDefault()))
+
+fun formatDate(date: LocalDate): String =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale()).format(date)
+
+/** "1.789 €/L" */
+fun formatPricePerLitre(value: Double, currency: String): String =
+    String.format(locale(), "%.3f %s/L", value, currency)
 
 fun formatTime(instant: Instant): String =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)

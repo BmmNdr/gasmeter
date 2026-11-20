@@ -95,6 +95,14 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 - **Delete route:** the route's trips (an open one included) are kept, as "No route".
 - **Change a trip's route:** from the trip result ("Change route"), to any route or to No route. Verdicts recompute against the new route's history.
 
+## Decisions made while building step 4 (settings and costs)
+- **Settings:** opened with the ⚙ icon on the Trips and Routes tabs. Car: average consumption (L/100 km), the range rounding step (now changeable at any time) and the currency symbol ("€" by default). Saving recalculates every trip.
+- **Empty consumption** means "not set": litres and costs hide, and trip results link to Settings instead.
+- **Fuel price:** entered manually, valid from a date (today by default, back-dating allowed, no future dates). One price per date; adding another for the same date replaces it. Prices can be deleted.
+- **Costing rule:** each trip uses the price valid on the day it started. Trips before the first price use the earliest price.
+- **Where costs show:** trip result (fuel L, cost, cost of extra range), trip rows, the routes list (average cost) and the route page (average, total and cost of extra range).
+- **No database change** was needed for this step; the existing tables already held these values.
+
 ## Edge cases
 | Case | Handling |
 |---|---|
@@ -129,6 +137,11 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 5. Dashboard, tags breakdown, CSV export/import, and the trip-in-progress notification.
 
 ## Later (not in MVP)
+- **Automatic fuel price (Italy):** MIMIT "Osservaprezzi carburanti" open data (IODL 2.0). It publishes daily, at about 08:00, every station's prices (`prezzo_alle_8.csv`) and a station registry (`anagrafica_impianti_attivi.csv`). The separator changed on 10 Feb 2026, so detect it from the header.
+  - Idea: the median of self-service Benzina prices in the user's province, counting only reports from the last 8 days and dropping typos outside 0.80–4.00 €/L. Fall back to the national median below 5 stations.
+  - Fetch once a day on app open, Wi-Fi only if the files aren't compressed. Cache the province's station IDs and refresh the registry weekly.
+  - A manual price for a date always beats the automatic one.
+  - Not built yet: the format needs checking against the real files first.
 - OCR of the dashboard photo.
 - Multiple cars.
 - Automatic route detection by GPS.

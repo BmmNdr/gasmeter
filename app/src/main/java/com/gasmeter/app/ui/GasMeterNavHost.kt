@@ -16,6 +16,8 @@ import com.gasmeter.app.ui.route.RouteDetailScreen
 import com.gasmeter.app.ui.route.RouteDetailViewModel
 import com.gasmeter.app.ui.routes.RoutesScreen
 import com.gasmeter.app.ui.routes.RoutesViewModel
+import com.gasmeter.app.ui.settings.SettingsScreen
+import com.gasmeter.app.ui.settings.SettingsViewModel
 import com.gasmeter.app.ui.start.StartTripScreen
 import com.gasmeter.app.ui.start.StartTripViewModel
 import com.gasmeter.app.ui.trip.TripDetailScreen
@@ -28,6 +30,7 @@ private object Destinations {
     const val TRIP = "trip/{id}"
     const val ROUTES = "routes"
     const val ROUTE = "route/{id}"
+    const val SETTINGS = "settings"
     fun trip(id: Long) = "trip/$id"
     fun route(id: Long) = "route/$id"
 }
@@ -56,6 +59,7 @@ fun GasMeterNavHost(repository: TripRepository) {
                 onEndTrip = { nav.navigate(Destinations.END) },
                 onOpenTrip = { id -> nav.navigate(Destinations.trip(id)) },
                 bottomBar = { tabs(MainTab.TRIPS) },
+                onOpenSettings = { nav.navigate(Destinations.SETTINGS) },
             )
         }
         composable(Destinations.ROUTES) {
@@ -63,6 +67,7 @@ fun GasMeterNavHost(repository: TripRepository) {
                 viewModel = viewModel { RoutesViewModel(repository) },
                 onOpenRoute = { id -> nav.navigate(Destinations.route(id)) },
                 bottomBar = { tabs(MainTab.ROUTES) },
+                onOpenSettings = { nav.navigate(Destinations.SETTINGS) },
             )
         }
         composable(
@@ -74,6 +79,12 @@ fun GasMeterNavHost(repository: TripRepository) {
                 viewModel = viewModel { RouteDetailViewModel(repository, id) },
                 onBack = { nav.popBackStack() },
                 onOpenTrip = { tripId -> nav.navigate(Destinations.trip(tripId)) },
+            )
+        }
+        composable(Destinations.SETTINGS) {
+            SettingsScreen(
+                viewModel = viewModel { SettingsViewModel(repository) },
+                onBack = { nav.popBackStack() },
             )
         }
         composable(Destinations.START) {
@@ -102,6 +113,7 @@ fun GasMeterNavHost(repository: TripRepository) {
             TripDetailScreen(
                 viewModel = viewModel { TripDetailViewModel(repository, id) },
                 onBack = { nav.popBackStack() },
+                onOpenSettings = { nav.navigate(Destinations.SETTINGS) },
             )
         }
     }

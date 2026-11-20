@@ -50,7 +50,7 @@ import com.gasmeter.app.ui.verdictColor
 import com.gasmeter.core.AnalyzedTrip
 
 @Composable
-fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
+fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -68,7 +68,7 @@ fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
                 state.loading -> Unit
                 trip == null -> Text("This trip no longer exists.")
                 else -> {
-                    TripResult(trip, state.routeName, state.settings) { RouteChanger(trip, viewModel) }
+                    TripResult(trip, state.routeName, state.settings, onOpenSettings) { RouteChanger(trip, viewModel) }
                     FlagsCard(trip, viewModel)
                     OutlinedButton(
                         onClick = { confirmDelete = true },
@@ -101,6 +101,7 @@ private fun TripResult(
     analyzed: AnalyzedTrip,
     routeName: String?,
     settings: CarSettings,
+    onOpenSettings: () -> Unit,
     routeChanger: @Composable () -> Unit,
 ) {
     val m = analyzed.trip.metrics
@@ -143,15 +144,16 @@ private fun TripResult(
             color = muted,
         )
     }
-    if (m.litres == null) {
-        Text(
-            "Litres and cost will appear once you set your car's average consumption and the fuel " +
-                "price (settings are coming in a later version).",
-            style = MaterialTheme.typography.bodySmall,
-            color = muted,
-        )
-    } else if (m.cost == null) {
-        Text("Add a fuel price to see the cost.", style = MaterialTheme.typography.bodySmall, color = muted)
+    val missing = when {
+        m.litres == null -> "Set your car's consumption in Settings to see litres and cost."
+        m.cost == null -> "Add a fuel price in Settings to see the cost."
+        else -> null
+    }
+    if (missing != null) {
+        Column {
+            Text(missing, style = MaterialTheme.typography.bodySmall, color = muted)
+            TextButton(onClick = onOpenSettings, contentPadding = PaddingValues(0.dp)) { Text("Open settings") }
+        }
     }
 
     if (analyzed.log.tags.isNotEmpty()) {

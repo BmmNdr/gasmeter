@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -62,7 +63,10 @@ class ScreenshotTest {
 
         // Seed: a commute with morning runs and heavy-traffic evenings; the flow
         // below adds one more, expensive run.
-        TestSeed().commuteHistory()
+        TestSeed().apply {
+            commuteHistory()
+            costs()
+        }
 
         waitForText("Recent trips")
         waitForText("Home → Work")
@@ -99,5 +103,13 @@ class ScreenshotTest {
         shot("7-route-detail", mode)
         compose.onAllNodesWithText("used", substring = true).onLast().performScrollTo()
         shot("8-route-trips", mode)
+
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        waitForText("Your routes")
+        compose.onNodeWithContentDescription("Settings").performClick()
+        waitForText("Average consumption")
+        shot("9-settings", mode)
+        compose.onNodeWithContentDescription("Delete price", substring = true).performScrollTo()
+        shot("10-settings-prices", mode)
     }
 }

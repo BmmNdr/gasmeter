@@ -25,13 +25,14 @@ class HomeViewModel(private val repository: TripRepository) : ViewModel() {
         repository.openTrip,
         repository.history,
         repository.routes,
-    ) { open, history, routes ->
+        repository.carSettings,
+    ) { open, history, routes, settings ->
         val names = routes.associate { it.id to it.name }
         HomeUiState(
             loading = false,
             openTrip = open,
             openTripRouteName = open?.routeId?.let(names::get),
-            recentTrips = history.asReversed().take(RECENT_LIMIT).map { it.toRow(names) },
+            recentTrips = history.asReversed().take(RECENT_LIMIT).map { it.toRow(names, settings.currency) },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 

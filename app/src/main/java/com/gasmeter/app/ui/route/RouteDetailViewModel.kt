@@ -52,7 +52,7 @@ class RouteDetailViewModel(
             stats = RouteStats.from(trips.map { it.trip }),
             breakdown = RouteBreakdown.from(trips, zone()),
             chart = trips.mapNotNull { t -> t.trip.comparableRatio?.let { ChartPoint(it, t.verdict) } },
-            trips = trips.asReversed().map { it.toRow(names) },
+            trips = trips.asReversed().map { it.toRow(names, settings.currency) },
             settings = settings,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RouteDetailState())

@@ -16,6 +16,8 @@ data class RouteListItem(
     val tripCount: Int,
     val medianRatio: Double?,
     val lastVerdict: Verdict?,
+    val averageCost: Double?,
+    val currency: String,
 )
 
 data class RoutesUiState(
@@ -25,7 +27,11 @@ data class RoutesUiState(
 
 class RoutesViewModel(repository: TripRepository) : ViewModel() {
 
-    val state: StateFlow<RoutesUiState> = combine(repository.routes, repository.history) { routes, history ->
+    val state: StateFlow<RoutesUiState> = combine(
+        repository.routes,
+        repository.history,
+        repository.carSettings,
+    ) { routes, history, settings ->
         val byRoute = history.groupBy { it.log.routeId }
         RoutesUiState(
             loading = false,
@@ -38,6 +44,8 @@ class RoutesViewModel(repository: TripRepository) : ViewModel() {
                     tripCount = stats.tripCount,
                     medianRatio = stats.medianRatio,
                     lastVerdict = trips.lastOrNull()?.verdict,
+                    averageCost = stats.averageCost,
+                    currency = settings.currency,
                 )
             },
         )

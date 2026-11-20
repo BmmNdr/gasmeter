@@ -26,15 +26,17 @@ data class TripRow(
     val metrics: TripMetrics,
     val verdict: Verdict?,
     val counted: Boolean,
+    val currency: String,
 )
 
-fun AnalyzedTrip.toRow(routeNames: Map<Long, String>) = TripRow(
+fun AnalyzedTrip.toRow(routeNames: Map<Long, String>, currency: String) = TripRow(
     id = log.id,
     endedAt = log.endedAt,
     routeName = log.routeId?.let(routeNames::get),
     metrics = trip.metrics,
     verdict = verdict,
     counted = trip.countsForStats,
+    currency = currency,
 )
 
 @Composable
@@ -57,6 +59,7 @@ fun TripListRow(row: TripRow, onClick: () -> Unit, showRoute: Boolean = true) {
                 append(" · ")
                 append(formatSignedKm(m.excessKm))
                 m.ratio?.let { append(" · ").append(formatRatio(it)) }
+                m.cost?.let { append(" · ").append(formatMoney(it, row.currency)) }
                 if (!row.counted) append(" · not counted")
             }
             Text(summary, style = MonoBody.copy(fontSize = 13.sp))
