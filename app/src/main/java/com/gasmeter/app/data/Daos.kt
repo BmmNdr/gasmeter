@@ -72,4 +72,11 @@ interface SettingsDao {
 
     @Query("SELECT * FROM fuel_prices ORDER BY effective_from")
     fun observeFuelPrices(): Flow<List<FuelPriceEntity>>
+
+    /** One price per date: replaces the existing price for the same date. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFuelPrice(price: FuelPriceEntity)
+
+    @Query("DELETE FROM fuel_prices WHERE id = :id")
+    suspend fun deleteFuelPrice(id: Long)
 }

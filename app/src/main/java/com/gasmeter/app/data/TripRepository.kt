@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 data class Route(val id: Long, val name: String)
@@ -33,11 +34,18 @@ data class OpenTrip(
 data class CarSettings(
     val consumptionLitresPer100Km: Double? = null,
     val rangeDisplayStepKm: Double? = null,
-    val currency: String? = null,
+    val currency: String = DEFAULT_CURRENCY,
 ) {
+    companion object {
+        const val DEFAULT_CURRENCY = "€"
+    }
+
     /** Falls back to a 1 km step when the user hasn't chosen one. */
     fun toProfile() = CarProfile(consumptionLitresPer100Km, rangeDisplayStepKm ?: 1.0)
 }
+
+/** A fuel price the user entered, valid from [effectiveFrom] until the next one. */
+data class StoredFuelPrice(val id: Long, val effectiveFrom: LocalDate, val pricePerLitre: Double)
 
 /** The last end readings, used to prefill the next trip's start. */
 data class LastReadings(val rangeKm: Double, val odometerKm: Double)
@@ -64,6 +72,11 @@ class TripRepository(
     val openTrip: Flow<OpenTrip?> = tripDao.observeOpen().map { it?.toOpenTrip() }
 
     val carSettings: Flow<CarSettings> = settingsDao.observeCarSettings().map { it.toSettings() }
+
+    /** Fuel prices, newest first. */
+    val fuelPrices: Flow<List<StoredFuelPrice>> = settingsDao.observeFuelPrices().map { list ->
+        list.map { StoredFuelPrice(it.id, it.effectiveFrom, it.pricePerLitre) }.sortedByDescending { it.effectiveFrom }
+    }
 
     /** All completed trips with metrics and verdicts, oldest first. */
     val history: Flow<List<AnalyzedTrip>> = combine(
@@ -184,9 +197,32 @@ class TripRepository(
 
     suspend fun setRangeDisplayStep(stepKm: Double) {
         require(stepKm > 0) { "Step must be positive" }
+        updateSettings { it.copy(rangeDisplayStepKm = stepKm) }
+    }
+
+    /** Sets the car's average consumption in L/100 km; null clears it. */
+    suspend fun setConsumption(litresPer100Km: Double?) {
+        require(litresPer100Km == null || litresPer100Km > 0) { "Consumption must be positive" }
+        updateSettings { it.copy(consumptionLitresPer100Km = litresPer100Km) }
+    }
+
+    /** Sets the currency symbol shown next to costs; blank restores the default. */
+    suspend fun setCurrency(symbol: String) {
+        updateSettings { it.copy(currency = symbol.trim().takeIf { s -> s.isNotEmpty() }) }
+    }
+
+    /** Sets the price valid from [date]; replaces any price already set for that date. */
+    suspend fun setFuelPrice(date: LocalDate, pricePerLitre: Double) {
+        require(pricePerLitre > 0) { "Price must be positive" }
+        settingsDao.upsertFuelPrice(FuelPriceEntity(effectiveFrom = date, pricePerLitre = pricePerLitre))
+    }
+
+    suspend fun deleteFuelPrice(id: Long) = settingsDao.deleteFuelPrice(id)
+
+    private suspend fun updateSettings(change: (CarSettingsEntity) -> CarSettingsEntity) {
         db.withTransaction {
             val current = settingsDao.getCarSettings() ?: CarSettingsEntity()
-            settingsDao.upsertCarSettings(current.copy(rangeDisplayStepKm = stepKm))
+            settingsDao.upsertCarSettings(change(current))
         }
     }
 
@@ -202,7 +238,7 @@ private fun TripEntity.toOpenTrip() = OpenTrip(id, routeId, startedAt, rangeStar
 private fun CarSettingsEntity?.toSettings() = CarSettings(
     consumptionLitresPer100Km = this?.consumptionLitresPer100Km,
     rangeDisplayStepKm = this?.rangeDisplayStepKm,
-    currency = this?.currency,
+    currency = this?.currency?.takeIf { it.isNotBlank() } ?: CarSettings.DEFAULT_CURRENCY,
 )
 
 private fun TripEntity.toTripLog(): TripLog? {

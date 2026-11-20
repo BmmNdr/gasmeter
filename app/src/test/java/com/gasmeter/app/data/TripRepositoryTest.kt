@@ -19,6 +19,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 @RunWith(AndroidJUnit4::class)
@@ -199,6 +200,81 @@ class TripRepositoryTest {
 
         repo.setTripRoute(stray, null)
         assertNull(repo.history.first().single { it.log.id == stray }.log.routeId)
+    }
+
+    @Test
+    fun consumption_roundTripAndClear() = runTest {
+        assertNull(repo.carSettings.first().consumptionLitresPer100Km)
+        repo.setConsumption(6.5)
+        assertEquals(6.5, repo.carSettings.first().consumptionLitresPer100Km!!, 0.0)
+        repo.setConsumption(null)
+        assertNull(repo.carSettings.first().consumptionLitresPer100Km)
+    }
+
+    @Test
+    fun consumption_mustBePositive() = runTest {
+        assertTrue(runCatching { repo.setConsumption(0.0) }.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun currency_defaultsToEuroAndCanChange() = runTest {
+        assertEquals("€", repo.carSettings.first().currency)
+        repo.setCurrency(" CHF ")
+        assertEquals("CHF", repo.carSettings.first().currency)
+        repo.setCurrency("  ")
+        assertEquals("€", repo.carSettings.first().currency)
+    }
+
+    @Test
+    fun settingsDoNotOverwriteEachOther() = runTest {
+        repo.setRangeDisplayStep(5.0)
+        repo.setConsumption(6.0)
+        repo.setCurrency("CHF")
+        val settings = repo.carSettings.first()
+        assertEquals(CarSettings(6.0, 5.0, "CHF"), settings)
+    }
+
+    @Test
+    fun fuelPrice_sameDateReplaces_newestFirst() = runTest {
+        repo.setFuelPrice(LocalDate.of(2026, 3, 1), 1.80)
+        repo.setFuelPrice(LocalDate.of(2026, 3, 5), 1.85)
+        repo.setFuelPrice(LocalDate.of(2026, 3, 1), 1.79)
+        val prices = repo.fuelPrices.first()
+        assertEquals(listOf(LocalDate.of(2026, 3, 5), LocalDate.of(2026, 3, 1)), prices.map { it.effectiveFrom })
+        assertEquals(1.79, prices[1].pricePerLitre, 0.0)
+
+        repo.deleteFuelPrice(prices[0].id)
+        assertEquals(listOf(1.79), repo.fuelPrices.first().map { it.pricePerLitre })
+    }
+
+    @Test
+    fun costsAppearOnceConsumptionAndPriceAreSet() = runTest {
+        repo.startTrip(null, 300.0, 12_000.0)
+        repo.finishTrip(295.0, 12_002.0)
+        assertNull(repo.history.first().single().trip.metrics.cost)
+
+        repo.setConsumption(6.0)
+        assertNull("no price yet", repo.history.first().single().trip.metrics.cost)
+
+        repo.setFuelPrice(LocalDate.of(2026, 3, 2), 1.80)
+        val m = repo.history.first().single().trip.metrics
+        assertEquals(0.30, m.litres!!, 1e-9)
+        assertEquals(0.54, m.cost!!, 1e-9)
+        assertEquals(0.324, m.excessCost!!, 1e-9)
+    }
+
+    @Test
+    fun backDatedPriceChangesOlderTripsOnly() = runTest {
+        repo.setConsumption(10.0) // 10 range-km = 1 L
+        drive(null, 10.0, 10.0) // Mar 2
+        now = Instant.parse("2026-03-10T08:00:00Z")
+        drive(null, 10.0, 10.0) // Mar 10
+
+        repo.setFuelPrice(LocalDate.of(2026, 3, 8), 2.00)
+        assertEquals(listOf(2.0, 2.0), repo.history.first().map { Math.round(it.trip.metrics.cost!! * 1000) / 1000.0 }) // earliest price applies before
+
+        repo.setFuelPrice(LocalDate.of(2026, 3, 1), 1.50)
+        assertEquals(listOf(1.5, 2.0), repo.history.first().map { Math.round(it.trip.metrics.cost!! * 1000) / 1000.0 })
     }
 
     @Test
