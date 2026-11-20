@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gasmeter.app.data.CarSettings
 import com.gasmeter.app.ui.BigStat
+import com.gasmeter.app.ui.ChoiceChip
 import com.gasmeter.app.ui.GasMeterScaffold
 import com.gasmeter.app.ui.LocalGasMeterColors
 import com.gasmeter.app.ui.MetricRow
@@ -66,7 +68,7 @@ fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
                 state.loading -> Unit
                 trip == null -> Text("This trip no longer exists.")
                 else -> {
-                    TripResult(trip, state.routeName, state.settings)
+                    TripResult(trip, state.routeName, state.settings) { RouteChanger(trip, viewModel) }
                     FlagsCard(trip, viewModel)
                     OutlinedButton(
                         onClick = { confirmDelete = true },
@@ -95,7 +97,12 @@ fun TripDetailScreen(viewModel: TripDetailViewModel, onBack: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: CarSettings) {
+private fun TripResult(
+    analyzed: AnalyzedTrip,
+    routeName: String?,
+    settings: CarSettings,
+    routeChanger: @Composable () -> Unit,
+) {
     val m = analyzed.trip.metrics
     val (headline, explanation) = analyzed.verdict.describe()
     val muted = LocalGasMeterColors.current.muted
@@ -103,6 +110,7 @@ private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: Car
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(routeName ?: "No route", style = MaterialTheme.typography.headlineSmall)
         Text(formatDateTime(analyzed.log.endedAt), style = MonoBody, color = muted)
+        routeChanger()
     }
 
     VerdictBanner(headline, explanation, verdictColor(analyzed.verdict), headlineTag = "verdictHeadline")
@@ -158,6 +166,40 @@ private fun TripResult(analyzed: AnalyzedTrip, routeName: String?, settings: Car
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             SectionLabel("Note")
             Text(note)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RouteChanger(analyzed: AnalyzedTrip, viewModel: TripDetailViewModel) {
+    val routes by viewModel.routes.collectAsStateWithLifecycle()
+    var open by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = { open = !open }, contentPadding = PaddingValues(0.dp)) {
+            Text(if (open) "Done" else "Change route")
+        }
+        if (open) {
+            SectionLabel("Move this trip to")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(
+                    selected = analyzed.log.routeId == null,
+                    onClick = { viewModel.setRoute(null) },
+                    text = "No route",
+                )
+                routes.forEach { route ->
+                    ChoiceChip(
+                        selected = analyzed.log.routeId == route.id,
+                        onClick = { viewModel.setRoute(route.id) },
+                        text = route.name,
+                    )
+                }
+            }
+            Text(
+                "The verdict is recalculated against the new route's trips.",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalGasMeterColors.current.muted,
+            )
         }
     }
 }

@@ -85,6 +85,16 @@ The repo (`BmmNdr/gasmeter`) is empty apart from a README. This plan turns the i
 - **Database:** schema v1 is exported to `app/schemas/`. From now on, schema changes need real Room migrations so installed data is kept.
 - **Signing:** debug builds use the committed `app/debug.keystore` (the standard Android debug key), so new builds install over old ones without losing data.
 
+## Decisions made while building step 3 (routes)
+- **Navigation:** bottom tabs, **Trips** (the home screen) and **Routes**. Other screens open on top without the tabs.
+- **Routes list:** each route with its counted trips, its usual (median) ratio and the last trip's verdict. Routes are still created from Start trip only.
+- **Route page:** usual ratio and trip count, the trend (only with more than 5 trips), a ratio chart, stats, a "what makes a difference" breakdown, and the route's trips.
+- **Chart:** the x axis is trip order (not dates), so bursts of trips don't squash the chart. It needs 2 comparable trips. The shaded band is the ±15% "normal" range and the dashed line is the usual ratio.
+- **Breakdown:** for each tag, the median ratio of trips with the tag vs without it. Also by time of day, using the trip's start time in the phone's time zone: morning 5–10, midday 10–16, evening 16–21, night 21–5. A group is shown only with at least 2 trips (for tags, on both sides).
+- **Rename:** inline on the route page. Names are unique ignoring case; changing only the case of a route's own name is allowed.
+- **Delete route:** the route's trips (an open one included) are kept, as "No route".
+- **Change a trip's route:** from the trip result ("Change route"), to any route or to No route. Verdicts recompute against the new route's history.
+
 ## Edge cases
 | Case | Handling |
 |---|---|

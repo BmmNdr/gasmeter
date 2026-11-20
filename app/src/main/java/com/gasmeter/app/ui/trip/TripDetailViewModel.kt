@@ -3,6 +3,7 @@ package com.gasmeter.app.ui.trip
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gasmeter.app.data.CarSettings
+import com.gasmeter.app.data.Route
 import com.gasmeter.app.data.TripRepository
 import com.gasmeter.core.AnalyzedTrip
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +37,13 @@ class TripDetailViewModel(
             settings = settings,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TripDetailState())
+
+    val routes: StateFlow<List<Route>> =
+        repository.routes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setRoute(routeId: Long?) {
+        viewModelScope.launch { repository.setTripRoute(tripId, routeId) }
+    }
 
     fun setExcluded(excluded: Boolean) {
         viewModelScope.launch { repository.setExcluded(tripId, excluded) }

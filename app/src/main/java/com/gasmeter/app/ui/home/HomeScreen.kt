@@ -1,6 +1,5 @@
 package com.gasmeter.app.ui.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,14 +33,9 @@ import com.gasmeter.app.ui.LocalGasMeterColors
 import com.gasmeter.app.ui.MonoBody
 import com.gasmeter.app.ui.PanelCard
 import com.gasmeter.app.ui.SectionLabel
-import com.gasmeter.app.ui.TagPill
-import com.gasmeter.app.ui.formatDateTime
+import com.gasmeter.app.ui.TripListRow
 import com.gasmeter.app.ui.formatKm
-import com.gasmeter.app.ui.formatRatio
-import com.gasmeter.app.ui.formatSignedKm
 import com.gasmeter.app.ui.formatTime
-import com.gasmeter.app.ui.shortLabel
-import com.gasmeter.app.ui.verdictColor
 
 @Composable
 fun HomeScreen(
@@ -50,12 +43,13 @@ fun HomeScreen(
     onStartTrip: () -> Unit,
     onEndTrip: () -> Unit,
     onOpenTrip: (Long) -> Unit,
+    bottomBar: @Composable () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confirmDiscard by remember { mutableStateOf(false) }
     val muted = LocalGasMeterColors.current.muted
 
-    GasMeterScaffold(title = "GasMeter") { padding ->
+    GasMeterScaffold(title = "GasMeter", bottomBar = bottomBar) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -111,7 +105,7 @@ fun HomeScreen(
             }
 
             items(state.recentTrips, key = { it.id }) { row ->
-                TripRowItem(row, onClick = { onOpenTrip(row.id) })
+                TripListRow(row, onClick = { onOpenTrip(row.id) })
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             }
         }
@@ -130,33 +124,5 @@ fun HomeScreen(
             },
             dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Cancel") } },
         )
-    }
-}
-
-@Composable
-private fun TripRowItem(row: TripRow, onClick: () -> Unit) {
-    val muted = LocalGasMeterColors.current.muted
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(row.routeName ?: "No route", style = MaterialTheme.typography.titleMedium)
-            Text(formatDateTime(row.endedAt), style = MaterialTheme.typography.bodySmall, color = muted)
-            val m = row.metrics
-            val summary = buildString {
-                append(formatKm(m.distanceKm))
-                append(" · used ")
-                append(formatKm(m.rangeUsedKm))
-                append(" · ")
-                append(formatSignedKm(m.excessKm))
-                m.ratio?.let { append(" · ").append(formatRatio(it)) }
-                if (!row.counted) append(" · not counted")
-            }
-            Text(summary, style = MonoBody.copy(fontSize = 13.sp))
-        }
-        row.verdict.shortLabel()?.let { label ->
-            TagPill(label, color = verdictColor(row.verdict))
-        }
     }
 }

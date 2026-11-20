@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,10 +53,13 @@ import com.gasmeter.core.Verdict
 fun GasMeterScaffold(
     title: String,
     onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
                 title = {
@@ -73,6 +77,7 @@ fun GasMeterScaffold(
                         }
                     }
                 },
+                actions = actions,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
@@ -261,12 +266,12 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 }
 
 @Composable
-fun verdictColor(verdict: Verdict?): Color {
-    val colors = LocalGasMeterColors.current
-    return when ((verdict as? Verdict.Judged)?.rating) {
+fun verdictColor(verdict: Verdict?): Color = verdictColorFor(verdict, LocalGasMeterColors.current)
+
+fun verdictColorFor(verdict: Verdict?, colors: GasMeterColors): Color =
+    when ((verdict as? Verdict.Judged)?.rating) {
         Rating.EFFICIENT -> colors.efficient
         Rating.NORMAL -> colors.normal
         Rating.EXPENSIVE -> colors.expensive
         null -> colors.neutral
     }
-}

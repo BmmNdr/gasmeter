@@ -1,6 +1,8 @@
 package com.gasmeter.app.ui
 
 import com.gasmeter.core.Rating
+import com.gasmeter.core.TimeOfDay
+import com.gasmeter.core.Trend
 import com.gasmeter.core.TripTag
 import com.gasmeter.core.Verdict
 import java.time.Instant
@@ -40,6 +42,11 @@ fun formatPercent(fraction: Double): String = "${(abs(fraction) * 100).roundToIn
 
 fun formatDateTime(instant: Instant): String =
     DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+        .withLocale(locale())
+        .format(instant.atZone(ZoneId.systemDefault()))
+
+fun formatDate(instant: Instant): String =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         .withLocale(locale())
         .format(instant.atZone(ZoneId.systemDefault()))
 
@@ -90,3 +97,27 @@ fun Verdict?.describe(): Pair<String, String> = when (this) {
             "No verdict" to "This route's earlier trips don't give a usable baseline yet."
     }
 }
+
+fun TimeOfDay.label(): String = when (this) {
+    TimeOfDay.MORNING -> "Morning"
+    TimeOfDay.MIDDAY -> "Midday"
+    TimeOfDay.EVENING -> "Evening"
+    TimeOfDay.NIGHT -> "Night"
+}
+
+fun TimeOfDay.hours(): String = when (this) {
+    TimeOfDay.MORNING -> "5–10"
+    TimeOfDay.MIDDAY -> "10–16"
+    TimeOfDay.EVENING -> "16–21"
+    TimeOfDay.NIGHT -> "21–5"
+}
+
+/** "Last 5 trips: 8% better than usual". */
+fun Trend.describe(): String = "Last $recentTripCount trips: " + when (direction) {
+    Trend.Direction.IMPROVING -> "${formatPercent(relativeChange)} better than usual"
+    Trend.Direction.WORSENING -> "${formatPercent(relativeChange)} worse than usual"
+    Trend.Direction.STABLE -> "in line with usual"
+}
+
+/** "3 trips" / "1 trip". */
+fun tripCount(n: Int): String = if (n == 1) "1 trip" else "$n trips"

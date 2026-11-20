@@ -3,14 +3,13 @@ package com.gasmeter.app
 import android.graphics.Bitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -61,21 +60,9 @@ class ScreenshotTest {
     private fun mainScreens(mode: String) {
         assumeTrue("screenshot dir not set", outDir != null)
 
-        // Seed: three normal runs of a route, then the flow below adds an expensive one.
-        val repo = ApplicationProvider.getApplicationContext<GasMeterApp>().repository
-        runBlocking {
-            repo.setRangeDisplayStep(1.0)
-            val route = repo.addRoute("Home → Work")
-            repo.addRoute("Gym")
-            var range = 320.0
-            var odo = 41_200.0
-            listOf(12.0, 13.0, 12.5).forEach { used ->
-                repo.startTrip(route, range, odo)
-                repo.finishTrip(range - used, odo + 11.0)
-                range -= used
-                odo += 11.0
-            }
-        }
+        // Seed: a commute with morning runs and heavy-traffic evenings; the flow
+        // below adds one more, expensive run.
+        TestSeed().commuteHistory()
 
         waitForText("Recent trips")
         waitForText("Home → Work")
@@ -91,8 +78,8 @@ class ScreenshotTest {
         shot("3-trip-in-progress", mode)
         compose.onNodeWithText("End trip").performClick()
         waitForText("Dashboard readings now")
-        compose.onNodeWithTag("endRangeField").performTextInput("265")
-        compose.onNodeWithTag("endOdometerField").performTextInput("41244")
+        compose.onNodeWithTag("endRangeField").performTextInput("300.5")
+        compose.onNodeWithTag("endOdometerField").performTextInput("41278")
         compose.onNodeWithText("Heavy traffic").performClick()
         shot("4-end-trip", mode)
 
@@ -100,5 +87,17 @@ class ScreenshotTest {
         waitForText("Trip result")
         waitForText("Expensive")
         shot("5-result", mode)
+
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        waitForText("Recent trips")
+        compose.onNodeWithText("ROUTES").performClick()
+        waitForText("7 trips")
+        shot("6-routes", mode)
+
+        compose.onNodeWithText("Home → Work").performClick()
+        waitForText("Usual range per km")
+        shot("7-route-detail", mode)
+        compose.onAllNodesWithText("used", substring = true).onLast().performScrollTo()
+        shot("8-route-trips", mode)
     }
 }
