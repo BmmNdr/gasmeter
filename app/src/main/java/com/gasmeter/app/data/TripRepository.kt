@@ -44,6 +44,8 @@ data class LastReadings(val rangeKm: Double, val odometerKm: Double)
 
 class TripAlreadyOpenException : IllegalStateException("A trip is already in progress")
 class NoOpenTripException : IllegalStateException("No trip is in progress")
+class RouteNameTakenException(val name: String) :
+    IllegalArgumentException("Another route is already called $name")
 class InvalidReadingsException(val issues: List<TripIssue>) :
     IllegalArgumentException("Invalid readings: $issues")
 
@@ -90,6 +92,34 @@ class TripRepository(
             routeDao.findByName(trimmed)?.id
                 ?: routeDao.insert(RouteEntity(name = trimmed, createdAt = clock()))
         }
+    }
+
+    /**
+     * Renames a route. Throws [RouteNameTakenException] if another route already
+     * has that name (ignoring case); changing only the case of its own name is fine.
+     */
+    suspend fun renameRoute(routeId: Long, name: String) {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "Route name must not be empty" }
+        db.withTransaction {
+            val route = routeDao.getById(routeId) ?: return@withTransaction
+            val clash = routeDao.findByName(trimmed)
+            if (clash != null && clash.id != routeId) throw RouteNameTakenException(trimmed)
+            routeDao.update(route.copy(name = trimmed))
+        }
+    }
+
+    /** Deletes a route. Its trips (including an open one) are kept, without a route. */
+    suspend fun deleteRoute(routeId: Long) {
+        db.withTransaction {
+            tripDao.clearRoute(routeId)
+            routeDao.delete(routeId)
+        }
+    }
+
+    /** Moves a trip to another route, or to none when [routeId] is null. */
+    suspend fun setTripRoute(tripId: Long, routeId: Long?) = updateTrip(tripId) {
+        it.copy(routeId = routeId)
     }
 
     /** Starts a trip. Throws [TripAlreadyOpenException] if one is already in progress. */

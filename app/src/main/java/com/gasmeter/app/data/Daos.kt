@@ -15,8 +15,17 @@ interface RouteDao {
     @Query("SELECT * FROM routes WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): RouteEntity?
 
+    @Query("SELECT * FROM routes WHERE id = :id")
+    suspend fun getById(id: Long): RouteEntity?
+
     @Insert
     suspend fun insert(route: RouteEntity): Long
+
+    @Update
+    suspend fun update(route: RouteEntity)
+
+    @Query("DELETE FROM routes WHERE id = :id")
+    suspend fun delete(id: Long)
 }
 
 @Dao
@@ -44,6 +53,10 @@ interface TripDao {
 
     @Query("DELETE FROM trips WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /** Detaches every trip (open or completed) from a route. */
+    @Query("UPDATE trips SET route_id = NULL WHERE route_id = :routeId")
+    suspend fun clearRoute(routeId: Long)
 }
 
 @Dao

@@ -142,6 +142,66 @@ class TripRepositoryTest {
     }
 
     @Test
+    fun renameRoute_changesNameEverywhere() = runTest {
+        val id = repo.addRoute("Home → Work")
+        repo.renameRoute(id, "  Commute ")
+        assertEquals(listOf(Route(id, "Commute")), repo.routes.first())
+    }
+
+    @Test
+    fun renameRoute_rejectsNameOfAnotherRoute() = runTest {
+        repo.addRoute("Gym")
+        val id = repo.addRoute("Home → Work")
+        val error = runCatching { repo.renameRoute(id, "gym") }.exceptionOrNull()
+        assertTrue(error is RouteNameTakenException)
+        assertEquals("Home → Work", repo.routes.first().single { it.id == id }.name)
+    }
+
+    @Test
+    fun renameRoute_allowsChangingCaseOfOwnName() = runTest {
+        val id = repo.addRoute("gym")
+        repo.renameRoute(id, "Gym")
+        assertEquals("Gym", repo.routes.first().single().name)
+    }
+
+    @Test
+    fun deleteRoute_keepsTripsWithoutRoute() = runTest {
+        val route = repo.addRoute("Gym")
+        val other = repo.addRoute("Work")
+        val done = drive(route, 10.0, 10.0)
+        drive(other, 10.0, 10.0)
+        repo.startTrip(route, 280.0, 10_020.0)
+
+        repo.deleteRoute(route)
+
+        assertEquals(listOf("Work"), repo.routes.first().map { it.name })
+        val history = repo.history.first()
+        assertEquals(2, history.size)
+        assertNull(history.single { it.log.id == done }.log.routeId)
+        assertEquals(other, history.single { it.log.id != done }.log.routeId)
+        assertNull("open trip loses its route too", repo.openTrip.first()!!.routeId)
+    }
+
+    @Test
+    fun setTripRoute_movesTripAndChangesComparisons() = runTest {
+        val route = repo.addRoute("Work")
+        repeat(2) { drive(route, 10.0, 10.0) }
+        val stray = drive(null, 10.0, 10.0)
+        val fourth = drive(route, 10.0, 13.0)
+        assertEquals(Verdict.NotEnoughHistory(2, 3), repo.history.first().single { it.log.id == fourth }.verdict)
+
+        repo.setTripRoute(stray, route)
+
+        val history = repo.history.first()
+        assertEquals(route, history.single { it.log.id == stray }.log.routeId)
+        val verdict = history.single { it.log.id == fourth }.verdict as Verdict.Judged
+        assertEquals(Rating.EXPENSIVE, verdict.rating)
+
+        repo.setTripRoute(stray, null)
+        assertNull(repo.history.first().single { it.log.id == stray }.log.routeId)
+    }
+
+    @Test
     fun rangeStepIsStored() = runTest {
         assertNull(repo.carSettings.first().rangeDisplayStepKm)
         repo.setRangeDisplayStep(5.0)
